@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+     KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="format-detection" content="telephone=no" />
+        <!-- WARNING: for iOS 7, remove the width=device-width and height=device-height attributes. See https://issues.apache.org/jira/browse/CB-4323 -->
+        <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height" />
+        <meta name="msapplication-tap-highlight" content="no" />
+
+        <title>Hello World</title>
+
+        <!-- STYLESHEETS -->
+        <link rel="stylesheet" type="text/css" href="css/index.css" />
+		<link rel="stylesheet" href="css/leaflet.css" />
+		<link rel="stylesheet" href="css/jquery.mobile-1.4.2.min.css">
+		
+        <!-- LIBS -->		
+		<script type="text/javascript" src="cordova.js"></script>
+        <script type="text/javascript" src="js/index.js"></script>
+		<script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+        <script type="text/javascript" src="lib/jquery-1.10.2.min.js"></script>
+		<script type="text/javascript" src="js/jquery.mobile-1.4.2.min.js"></script>
+
+		<style>
+		#menu_side_panel{
+			margin-right: auto;
+			overflow-y: auto;
+			height: 150px;
+		}
+		</style>
+    </head>
+	
+    <body>
+		<div data-role="page" id="home" data-theme="b">
+			<div data-role="panel" id="navpanel" data-theme="b" data-position="left" data-position-fixed="true" data-display="overlay">
+				<div data-role="controlgroup" data-corners="false" id="menu_side_panel">
+				
+				</div>
+			</div>
+			<div id="header" data-role="header" data-theme="b">
+				<a id="bars-button" data-icon="bars" class="ui-btn-left" style="margin-top:5px;" href="#navpanel">Menu</a>
+			</div>
+			<div data-role="content" style="margin: 0px; padding: 0px;">
+				<div id="map"> </div>
+			</div>
+		</div>
+
+
+		<!-- APP -->
+        <script type="text/javascript">
+			app.initialize();
+			var ePopup;
+			var devID;
+			var getAct = 1;
+			
+			
+			var emulatedLat = 45.249449;
+			var emulatedLon = 19.833132;
+			function setDevId(devid) {
+				devID = devid;
+			}
+
+			var latitude;
+			var longitude;
+			function setPosition(lat, lon) {
+				latitude = lat;
+				longitude = lon;
+			}
+			
+			/***
+			fixHeight
+			CSS correction
+			***/
+			function fixHeight(){
+				var height = $( window ).height();
+				height = height - 50;
+				$("#menu_side_panel").css("overflow-y", "auto").css("height", height);
+			}
+			
+			/***
+			TakeCategoryFromServer
+			This function is asking server for categorys then it create side menu from data recived from server
+			***/
+			function TakeCategoryFromServer() {
+				$.ajax({
+					type: 'POST',
+					url: 'http://lacitadelleingficontent.appspot.com/ajaxCategory',
+					success: function(data) {
+						var obj = jQuery.parseJSON(data);
+						$.each(obj, function() {
+							$("#menu_side_panel").append(
+								'<a href="#" data-role="button" data-rel="close" onClick="selectCategory(' + this.id + ')">' + this.name + '</a>'
+							);
+						});
+						$("#menu_side_panel").trigger("create");
+					},
+					error: function() {
+						var r = confirm("Turn on data or WiFi and click OK!");
+							if (r == true) {
+								TakeCategoryFromServer();
+							} else {
+								navigator.app.exitApp();
+							} 
+					}
+				});
+			}
+			TakeCategoryFromServer();
+			
+		   /*window.addEventListener('orientationchange', function(){
+				var headerS = $('#header');
+				var bodyS = $('html');
+				var mapS = $('#map');
+				
+				mapS.css('height', bodyS.height() - headerS.outerHeight());
+				mapS.css('width', bodyS.width());
+				fixHeight();
+				deviceReady(latitude,longitude)
+		
+			});*/
+		   
+			$(function() {
+				var header = $('#header');
+				var body = $('html');
+				var map = $('#map');
+				
+				map.css('height', body.height() - header.outerHeight());
+				map.css('width', body.width());
+			});
+			
+			var markers = new L.FeatureGroup();
+			
+			function deviceReady(lat,lon, cat) {
+				/*
+				cordova plugin add org.apache.cordova.inappbrowser
+				*/
+				
+				iconURL = 'img/musicIco.png';
+				var MusicIcon = L.Icon.extend({
+					options: {
+						iconSize:     [50, 50]
+					}
+				});
+				var musicIcon = new MusicIcon({iconUrl: iconURL});
+				
+				cat = cat || '';
+				latitude = lat;
+				longitude = lon;
+			
+				var mapquestUrl = 'http://otile{s}.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.png', 
+				mapquest = new L.TileLayer(mapquestUrl, {
+					maxZoom: 18,         
+					subdomains: ['1','2','3','4']
+				}),
+				
+				markerN = new L.LatLng(emulatedLat, emulatedLon);
+
+				map = new L.Map('map',{ 
+					center: markerN, 
+					zoom: 13, 
+					layers: [mapquest]}
+				);
+
+				
+				map.addLayer(markers);
+				
+				iconsURL = ['img/musicIco.png', 'img/icons/hotel.png', 'img/icons/cake.png', 'img/icons/coffee.png', 'img/icons/fastfood.png', 'img/icons/pizza.png', 'img/icons/restaurant.png'];
+				
+					
+				POI = callForPOI(emulatedLat, emulatedLon, cat);
+				for (var prop in POI) {
+					m = POI[prop];
+					
+
+					iconURL = iconsURL[0 < m['cat'] && m['cat'] < iconURL.length ? m['cat'] : 0];
+					
+					var Icon = L.Icon.extend({
+						options: {
+							iconSize:     [50, 50]
+						}
+					});
+					var Icons = new Icon({iconUrl: iconURL});
+					
+					
+					
+					if(m['like'] == '1'){
+						var htmlIcoButtons = "<div class='buttons'><button class='likeButton' onClick='likeDislike(" + m['poiId'] + ", 0)'>Like</button><button class='dislikeButton' onClick='likeDislike(" + m['poiId'] + ", 2)'>Dislike</button></div>";
+					} else {
+						var htmlIcoButtons = "<div class='buttons'><button class='likeButton' disabled >Like</button><button class='dislikeButton' disabled >Dislike</button></div>";
+					}
+					
+					var htmlIcoText = "<p class='popuptext'>" + m['desc'] + "</p>";
+					//var htmlIcoMedia = " <div class='mediaSet'><img class='popupmedia' src='" + m['media'] + "' alt='Media'></div>";
+					var htmlIcoMedia = " <div class='mediaSet'><a class='popupmedia' href='#' onclick=\"window.open('" + m['media'] + "', '_system');\" >website: " + m['name'] + "</a></div>";
+					var html = "<div id='" + m['poiId'] + "'>" + htmlIcoText + htmlIcoMedia + htmlIcoButtons + "</div>";
+					
+					markerNew = new L.LatLng(m['lat'], m['lon']);
+					
+					var view = 0;
+					if(m['viewed'] == true){
+						view = 1;
+					}
+					
+					var markere = L.marker(markerNew, {icon: Icons }).bindPopup(html).on("popupopen", function() { POIviewed(m['poiId'], e, view); });
+					markers.addLayer(markere);
+				}
+			};
+			  
+			/***
+			callForPOI( latitude, longitude, category id )
+			This function calls server sending latitude, longitude, category id and device id data.
+			Then it recive markers data from server.
+			Format is json
+			***/
+			function callForPOI(lat, lon, cat) {
+				var ActData = $.ajax({
+					url : "http://lacitadelleingficontent.appspot.com/callAct",
+					type : "POST",
+					dataType : "json",
+					async : false,
+					data : {
+						devID: devID,
+						act: getAct,
+					}
+				}).responseText;
+				
+				alert(ActData);
+				
+				
+				var jsonData = $.ajax({
+					url : "http://lacitadelleingficontent.appspot.com/callPOI",
+					type : "POST",
+					dataType : "json",
+					async : false,
+					data : {
+						lat: lat, 
+						lon: lon, 
+						cat: cat,
+						devID: devID,
+					}
+				}).responseText;
+				//alert(jsonData);
+				return JSON.parse(jsonData);
+			};
+				  
+			/***
+			likeDislike ( POI id, like/dislike value )
+			This function is called on like or dislike button click event 
+			***/
+			function likeDislike(id, value){
+				devId = devID;
+				var jsonData = $.ajax({
+					url : "http://lacitadelleingficontent.appspot.com/ajaxLike",
+					type : "POST",
+					dataType : "json",
+					async : false,
+					data : {
+						lat: latitude, 
+						lon: longitude, 
+						id: id,
+						value: value,
+						devID: devID,
+					}
+				}).responseText;
+				if(jsonData == 'ok'){
+					//map.closePopup();
+					
+					var cont = ePopup.popup.getContent();
+					var $cont = $(cont);
+					$cont.find('.likeButton').attr("disabled", true);
+					$cont.find('.dislikeButton').attr("disabled", true);
+
+					ePopup.popup._source.setPopupContent($cont.html());
+				}
+			}
+			
+			/***
+			POIviewed ( id of POI )
+			This function is called on POI marker click event
+			***/
+			var myArrayOfPOI = [];
+			
+
+			
+			function POIviewed(id, e, firstTimeViewed){
+				/***
+				need to add ajax call when poi is viewed !!!
+				***/
+				
+				var htmlOfPOI = e.popup.getContent();
+				var $htmlOfPOI = $(htmlOfPOI);
+				var idFromHTML = $htmlOfPOI.attr('id');
+				
+				$.each(myArrayOfPOI, function(i,v){
+					if(v == idFromHTML){
+						firstTimeViewed = 1;
+					}
+				});
+				
+				if(firstTimeViewed  < 1){
+					devId = devID;
+					var jsonData = $.ajax({
+						url : "http://lacitadelleingficontent.appspot.com/POIviewed",
+						type : "POST",
+						dataType : "json",
+						async : false,
+						data : { 
+							id: id,
+							devID: devID,
+						}
+					}).responseText;
+					if(jsonData == 'ok'){
+						myArrayOfPOI.push( idFromHTML );
+					}
+				}
+				
+				
+				
+				ePopup = false;
+				try{
+					ePopup = e;
+				}
+				catch (err) {
+					//alert("Marker error!");
+				}
+				
+			}
+
+			
+			/***
+			selectCategory( id of selected category )
+			This function is called when side menu category has been selected,
+			it close side menu and removes old markers then adds new markers from server data
+			***/
+			function selectCategory(catID) {
+				/*
+				cordova plugin add org.apache.cordova.inappbrowser
+				*/
+				
+				$("#navpanel").panel( "close" );
+				map.removeLayer(markers);
+				
+				markers = new L.FeatureGroup();
+				map.addLayer(markers);
+				
+				iconsURL = ['img/musicIco.png', 'img/icons/hotel.png', 'img/icons/cake.png', 'img/icons/coffee.png', 'img/icons/fastfood.png', 'img/icons/pizza.png', 'img/icons/restaurant.png'];
+				
+				
+				POI = callForPOI(latitude, longitude, catID);
+				for (var prop in POI) {
+					m = POI[prop];
+					
+					iconURL = iconsURL[0 < m['cat'] && m['cat'] < iconURL.length ? m['cat'] : 0];
+					
+					var Icon = L.Icon.extend({
+						options: {
+							iconSize:     [50, 50]
+						}
+					});
+					var Icons = new Icon({iconUrl: iconURL});
+					
+					
+					var htmlIcoText = "<p class='popuptext'>" + m['desc'] + "</p>";
+					//var htmlIcoMedia = " <div class='mediaSet'><img class='popupmedia' src='" + m['media'] + "' alt='Media'></div>";
+					var htmlIcoMedia = " <div class='mediaSet'><a class='popupmedia' href='#' onclick=\"window.open('" + m['media'] + "', '_system');\" >website: " + m['name'] + "</a></div>";
+					if(m['like'] == '1'){
+						var htmlIcoButtons = "<div class='buttons'><button class='likeButton' onClick='likeDislike(" + m['poiId'] + ", 2)'>Like</button><button class='dislikeButton' onClick='likeDislike(" + m['poiId'] + ", 0)'>Dislike</button></div>";
+					} else {
+						var htmlIcoButtons = "<div class='buttons'><button class='likeButton' disabled >Like</button><button class='dislikeButton' disabled >Dislike</button></div>";
+					}
+					
+					//var htmlIcoButtons = "<div class='buttons'><button class='likeButton' onClick='likeDislike(" + m['poiId'] + ", 1)'>Like</button><button class='dislikeButton' onClick='likeDislike(" + m['poiId'] + ", 0)'>Dislike</button></div>";
+					
+					var html = "<div id='" + m['poiId'] + "'>" + htmlIcoText + htmlIcoMedia + htmlIcoButtons + "</div>";
+					markerNew = new L.LatLng(m['lat'], m['lon']);
+					
+					var view = 0;
+					if(m['viewed'] == true){
+						view = 1;
+					}
+					
+					var markere =  L.marker(markerNew, {icon: Icons }).bindPopup(html).on("popupopen", function(e) { POIviewed( m['poiId'], e, view); });
+					markers.addLayer(markere);
+				}
+			}
+
+        </script>
+    </body>
+</html>
